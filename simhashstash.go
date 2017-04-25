@@ -3,6 +3,9 @@ package simhashstash
 import (
 	"fmt"
 	"github.com/mfonda/simhash"
+
+	// TODO: replace this lib with something maintained and with fewer
+	// licensing issues.
 	"github.com/petar/GoLLRB/llrb"
 )
 
@@ -28,15 +31,15 @@ func (s *Stash) Add(k, v []byte) {
 	// order to make search O(logn) using left leaning red-black trees.
 	for i := 0; i < 64; i++ {
 		// Store the original *key*, not the raw value bytes, in each node.
-		var n node
-		nk := node{h, nil}
+		var n Node
+		nk := Node{h, nil}
 		nn := s.tree[i].Get(nk)
 		if nn == nil {
-			n = node{h, nil}
+			n = Node{h, nil}
 		} else {
-			n = nn.(node)
+			n = nn.(Node)
 		}
-		n.val = append(n.val, k)
+		n.Val = append(n.Val, k)
 		s.tree[i].ReplaceOrInsert(n)
 		h = leftRot(h, 1)
 	}
@@ -48,36 +51,34 @@ func (s *Stash) Query(in []byte, thresh uint8) [][]byte {
 	seen := map[string]interface{}{}
 
 	for i := 0; i < 64; i++ {
-		pivot := node{key: h, val: [][]byte{}}
+		pivot := Node{Key: h, Val: [][]byte{}}
 		for _, tree := range s.tree {
 			tree.AscendGreaterOrEqual(pivot, func(i llrb.Item) bool {
-				if simhash.Compare(pivot.key, i.(node).key) > thresh {
+				if simhash.Compare(pivot.Key, i.(Node).Key) > thresh {
 					return false
 				}
-				for _, v := range i.(node).val {
+				for _, v := range i.(Node).Val {
 					seen[string(v)] = struct{}{}
 				}
 				return true
 			})
 			tree.DescendLessOrEqual(pivot, func(i llrb.Item) bool {
-				if simhash.Compare(pivot.key, i.(node).key) > thresh {
+				if simhash.Compare(pivot.Key, i.(Node).Key) > thresh {
 					return false
 				}
-				for _, v := range i.(node).val {
+				for _, v := range i.(Node).Val {
 					seen[string(v)] = struct{}{}
 				}
 				return true
 			})
 		}
 
-		fmt.Printf("Adding %v from shard %d\n", seen, i)
 		h = leftRot(h, 1)
 	}
 
 	ret := [][]byte{}
 	// De-dupe keys we've pulled from multiple shards.
-	for k, v := range seen {
-		fmt.Printf("seen %d/%d %v = %v\n", len(ret), len(seen), k, v)
+	for k := range seen {
 		ret = append(ret, []byte(k))
 	}
 
@@ -85,19 +86,19 @@ func (s *Stash) Query(in []byte, thresh uint8) [][]byte {
 }
 
 // Implements llrb.Item
-type node struct {
-	key uint64
+type Node struct {
+	Key uint64
 	// val is a slice of byte slices because multiple values can
 	// generate the same simhash, and we need to handle those collisions.
-	val [][]byte
+	Val [][]byte
 }
 
-func (a node) Less(b llrb.Item) bool {
-	return a.key < b.(node).key
+func (a Node) Less(b llrb.Item) bool {
+	return a.Key < b.(Node).Key
 }
 
-func (a node) String() string {
-	return fmt.Sprintf("%64b: %v", a.key, a.val)
+func (a *Node) String() string {
+	return fmt.Sprintf("%64b: %v", a.Key, a.Val)
 }
 
 // From https://github.com/golang/go/issues/18616#issuecomment-272598771
