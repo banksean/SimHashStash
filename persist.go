@@ -2,7 +2,6 @@ package simhashstash
 
 import (
 	"encoding/gob"
-	//"fmt"
 	"io"
 
 	// TODO: replace this lib with something maintained and with fewer
