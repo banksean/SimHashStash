@@ -1,4 +1,7 @@
+
 # simhashstash
+
+[![Build Status](https://travis-ci.org/banksean/simhashstash.svg?branch=master)](https://travis-ci.org/banksean/simhashstash)
 
 A very basic store for keeping track of near-duplicates.
 
