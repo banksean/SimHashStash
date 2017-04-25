@@ -1,7 +1,6 @@
 package simhashstash
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -19,6 +18,6 @@ func TestAdd(t *testing.T) {
 
 	res := s.Query([]byte("some text"), 64)
 	if len(res) != 2 {
-		t.Errorf("wrong number of results: %d", len(res))
+		t.Errorf("wrong number of results: %d, %v", len(res), res)
 	}
 }

@@ -21,7 +21,7 @@ func NewStash() *Stash {
 }
 
 // Add adds k to the list of keys associated with v's simhash matches.
-func (idx *Stash) Add(k, v []byte) {
+func (s *Stash) Add(k, v []byte) {
 	// TODO: parameterize the FeatureSet implementation.
 	h := simhash.Simhash(simhash.NewWordFeatureSet(v))
 	// Store 64 rotations of the simhash, so lookups can use sorted
@@ -30,34 +30,30 @@ func (idx *Stash) Add(k, v []byte) {
 		// Store the original *key*, not the raw value bytes, in each node.
 		var n node
 		nk := node{h, nil}
-		nn := idx.tree[i].Get(nk)
+		nn := s.tree[i].Get(nk)
 		if nn == nil {
 			n = node{h, nil}
 		} else {
 			n = nn.(node)
 		}
 		n.val = append(n.val, k)
-		idx.tree[i].ReplaceOrInsert(n)
+		s.tree[i].ReplaceOrInsert(n)
 		h = leftRot(h, 1)
 	}
 }
 
 // Query returns any matches that are within thresh Hamming distance of in's simhash.
-func (ind *Stash) Query(in []byte, thresh uint8) [][]byte {
+func (s *Stash) Query(in []byte, thresh uint8) [][]byte {
 	h := simhash.Simhash(simhash.NewWordFeatureSet(in))
 	seen := map[string]interface{}{}
 
 	for i := 0; i < 64; i++ {
 		pivot := node{key: h, val: [][]byte{}}
-		// TODO: test this for duplicate return values. The OrEqual part on both traversals
-		// makes me nervous.
-		for _, tree := range ind.tree {
-			shardRes := []node{}
+		for _, tree := range s.tree {
 			tree.AscendGreaterOrEqual(pivot, func(i llrb.Item) bool {
 				if simhash.Compare(pivot.key, i.(node).key) > thresh {
 					return false
 				}
-				shardRes = append(shardRes, i.(node))
 				for _, v := range i.(node).val {
 					seen[string(v)] = struct{}{}
 				}
@@ -67,21 +63,24 @@ func (ind *Stash) Query(in []byte, thresh uint8) [][]byte {
 				if simhash.Compare(pivot.key, i.(node).key) > thresh {
 					return false
 				}
-				shardRes = append(shardRes, i.(node))
 				for _, v := range i.(node).val {
 					seen[string(v)] = struct{}{}
 				}
 				return true
 			})
 		}
+
+		fmt.Printf("Adding %v from shard %d\n", seen, i)
 		h = leftRot(h, 1)
 	}
 
-	ret := make([][]byte, len(seen))
+	ret := [][]byte{}
 	// De-dupe keys we've pulled from multiple shards.
-	for k := range seen {
+	for k, v := range seen {
+		fmt.Printf("seen %d/%d %v = %v\n", len(ret), len(seen), k, v)
 		ret = append(ret, []byte(k))
 	}
+
 	return ret
 }
 
