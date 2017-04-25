@@ -50,30 +50,26 @@ func (s *Stash) Query(in []byte, thresh uint8) [][]byte {
 	h := simhash.Simhash(simhash.NewWordFeatureSet(in))
 	seen := map[string]interface{}{}
 
-	for i := 0; i < 64; i++ {
-		pivot := Node{Key: h, Val: [][]byte{}}
-		for _, tree := range s.tree {
-			tree.AscendGreaterOrEqual(pivot, func(i llrb.Item) bool {
-				if simhash.Compare(pivot.Key, i.(Node).Key) > thresh {
-					return false
-				}
-				for _, v := range i.(Node).Val {
-					seen[string(v)] = struct{}{}
-				}
-				return true
-			})
-			tree.DescendLessOrEqual(pivot, func(i llrb.Item) bool {
-				if simhash.Compare(pivot.Key, i.(Node).Key) > thresh {
-					return false
-				}
-				for _, v := range i.(Node).Val {
-					seen[string(v)] = struct{}{}
-				}
-				return true
-			})
-		}
-
-		h = leftRot(h, 1)
+	pivot := Node{Key: h, Val: [][]byte{}}
+	for _, tree := range s.tree {
+		tree.AscendGreaterOrEqual(pivot, func(i llrb.Item) bool {
+			if simhash.Compare(pivot.Key, i.(Node).Key) > thresh {
+				return false
+			}
+			for _, v := range i.(Node).Val {
+				seen[string(v)] = struct{}{}
+			}
+			return true
+		})
+		tree.DescendLessOrEqual(pivot, func(i llrb.Item) bool {
+			if simhash.Compare(pivot.Key, i.(Node).Key) > thresh {
+				return false
+			}
+			for _, v := range i.(Node).Val {
+				seen[string(v)] = struct{}{}
+			}
+			return true
+		})
 	}
 
 	ret := [][]byte{}
